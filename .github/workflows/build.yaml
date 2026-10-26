@@ -73,7 +73,7 @@ jobs:
             -project "Open UI.xcodeproj" \
             -scheme "Open UI" \
             -configuration Release \
-            -destination "generic platform=iOS" \
+            -destination "generic/platform=iOS" \
             -derivedDataPath build \
             -skipPackagePluginValidation \
             -skipMacroValidation \
