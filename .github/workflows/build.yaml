@@ -1,0 +1,99 @@
+name: Build Open-Relay IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Upstream tag to build (e.g. v6.4.1)"
+        required: true
+
+concurrency:
+  group: build-${{ inputs.tag }}
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Stop if this tag is already released
+        id: already
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null; then
+            echo "$TAG is already released"
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Checkout upstream at the tag
+        if: steps.already.outputs.released != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: Ichigo3766/Open-Relay
+          ref: ${{ inputs.tag }}
+
+      - name: Extract release notes from CHANGELOG
+        if: steps.already.outputs.released != 'true'
+        run: |
+          awk -v tag="$TAG" '
+            $1 == "##" {
+              if (seen) exit
+              if ($2 == tag) {
+                seen = 1
+                print
+                print ""
+                print "[`" tag "`](https://github.com/Ichigo3766/Open-Relay/tree/" tag ") | [Open Relay](https://github.com/Ichigo3766/Open-Relay)"
+              }
+              next
+            }
+            seen { print }
+          ' CHANGELOG.md > release-body.md
+
+          if [ ! -s release-body.md ]; then
+            echo "CHANGELOG has no section for $TAG" >&2
+            exit 1
+          fi
+        env:
+          TAG: ${{ inputs.tag }}
+
+      - name: Setup latest Xcode
+        if: steps.already.outputs.released != 'true'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest
+
+      - name: Build Xcode Project
+        if: steps.already.outputs.released != 'true'
+        run: |
+          xcodebuild clean build \
+            -project "Open UI.xcodeproj" \
+            -scheme "Open UI" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package into IPA
+        if: steps.already.outputs.released != 'true'
+        run: |
+          mkdir Payload
+          mv "build/Build/Products/Release-iphoneos"/*.app Payload/
+          zip -qr "Open-Relay-$TAG.ipa" Payload
+        env:
+          TAG: ${{ inputs.tag }}
+
+      - name: Create release
+        if: steps.already.outputs.released != 'true'
+        run: |
+          gh release create "$TAG" "Open-Relay-$TAG.ipa" \
+            --title "$TAG" \
+            --notes-file release-body.md
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,35 @@
+name: Check upstream tags
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check upstream tags
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Find tags with no release here
+        run: |
+          python check_release.py > new_tags.txt
+          cat new_tags.txt
+        env:
+          BUILD_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Dispatch a build for each new tag
+        run: |
+          while read -r tag; do
+            echo "dispatching build for $tag"
+            gh workflow run build.yaml -f tag="$tag"
+          done < new_tags.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
