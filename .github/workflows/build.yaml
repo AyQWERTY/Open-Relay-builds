@@ -66,6 +66,30 @@ jobs:
         with:
           xcode-version: latest
 
+      - name: Drop the watch companion from the iOS build
+        if: steps.already.outputs.released != 'true'
+        run: |
+          pbxproj="Open UI.xcodeproj/project.pbxproj"
+
+          if ! grep -q "38WATCH0E2F0000000000000E /\* Embed Watch Content \*/," "$pbxproj"; then
+            echo "pbxproj layout changed: Embed Watch Content phase reference not found" >&2
+            exit 1
+          fi
+          if ! grep -q "38WATCH0B2F0000000000000B /\* PBXTargetDependency \*/," "$pbxproj"; then
+            echo "pbxproj layout changed: watch target dependency not found" >&2
+            exit 1
+          fi
+
+          sed \
+            -e '/38WATCH0E2F0000000000000E \/\* Embed Watch Content \*\/,/d' \
+            -e '/38WATCH0B2F0000000000000B \/\* PBXTargetDependency \*\/,/d' \
+            "$pbxproj" > "$pbxproj.tmp" && mv "$pbxproj.tmp" "$pbxproj"
+
+          if grep -q "38WATCH0E2F0000000000000E /\* Embed Watch Content \*/," "$pbxproj"; then
+            echo "pbxproj layout changed: Embed Watch Content phase still referenced" >&2
+            exit 1
+          fi
+
       - name: Build Xcode Project
         if: steps.already.outputs.released != 'true'
         run: |
@@ -79,8 +103,7 @@ jobs:
             -skipMacroValidation \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend -solver-expression-time-threshold=3000 -Xfrontend -solver-memory-threshold=4294967295 -Xfrontend -solver-scope-threshold=10000000 -Xfrontend -solver-trail-threshold=10000000'
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Package into IPA
         if: steps.already.outputs.released != 'true'
@@ -95,8 +118,10 @@ jobs:
         if: steps.already.outputs.released != 'true'
         run: |
           gh release create "$TAG" "Open-Relay-$TAG.ipa" \
+            --repo "$GITHUB_REPOSITORY" \
             --title "$TAG" \
             --notes-file release-body.md
         env:
           TAG: ${{ inputs.tag }}
           GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
