@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     name: Build unsigned IPA
-    runs-on: xcode-27
+    runs-on: macos-26-intel
     permissions:
       contents: write
 
@@ -86,11 +86,11 @@ jobs:
               catalog.write_text(json.dumps(data, indent=2) + "\n")
           PY
 
-      - name: Setup Xcode 27
+      - name: Setup latest Xcode
         if: steps.already.outputs.released != 'true'
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "27"
+          xcode-version: latest
 
       - name: Download Metal Toolchain
         if: steps.already.outputs.released != 'true'
@@ -110,7 +110,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend -solver-expression-time-threshold=100000 -Xfrontend -solver-memory-threshold=4294967295 -Xfrontend -solver-scope-threshold=4294967295 -Xfrontend -solver-trail-threshold=4294967295'
+            OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend -debug-time-expression-type-checking -Xfrontend -solver-expression-time-threshold=100000 -Xfrontend -solver-memory-threshold=4294967295 -Xfrontend -solver-scope-threshold=4294967295 -Xfrontend -solver-trail-threshold=4294967295'
 
       - name: Package into IPA
         if: steps.already.outputs.released != 'true'
