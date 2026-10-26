@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build:
     name: Build unsigned IPA
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       contents: write
 
@@ -60,7 +60,7 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
 
-      - name: Setup latest Xcode
+      - name: Setup Xcode 16.4
         if: steps.already.outputs.released != 'true'
         uses: maxim-lobanov/setup-xcode@v1
         with:
