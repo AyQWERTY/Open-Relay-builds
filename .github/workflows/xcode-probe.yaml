@@ -14,11 +14,13 @@ concurrency:
 jobs:
   probe:
     name: Xcode ${{ matrix.xcode }}
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        xcode: ["26.6", "26.5", "26.4.1", "26.3", "26.2"]
+        include:
+          - runner: xcode-27
+            xcode: "27"
 
     steps:
       - name: Show installed Xcode versions
