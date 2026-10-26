@@ -31,15 +31,28 @@ def api(path):
         return json.load(resp)
 
 
+def version(tag):
+    return tuple(int(p) for p in tag.lstrip("v").split("."))
+
+
 def main():
     tags = [tag["name"] for tag in api(f"/repos/{UPSTREAM}/tags?per_page=100")]
     released = {
         r["tag_name"] for r in api(f"/repos/{BUILD_REPO}/releases?per_page=100")
     }
 
-    for tag in [tag for tag in tags if tag not in released][:MAX_BUILDS]:
+    # take the MAX_BUILDS newest tags, print them oldest first: GitHub's "latest"
+    # release is the most recently created one, so the newest version must be built last
+    pending = sorted((t for t in tags if t not in released), key=version, reverse=True)
+    for tag in sorted(pending[:MAX_BUILDS], key=version):
         print(tag)
 
 
 if __name__ == "__main__":
+    assert sorted(["v6.4", "v6.4.1", "v6.10", "v3.4.2.1"], key=version) == [
+        "v3.4.2.1",
+        "v6.4",
+        "v6.4.1",
+        "v6.10",
+    ]
     main()

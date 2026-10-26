@@ -7,8 +7,10 @@ on:
         description: "Upstream tag to build (e.g. v6.4.1)"
         required: true
 
+# one shared queue: builds must finish in tag order so the newest version is
+# created last and becomes the "latest" release
 concurrency:
-  group: build-${{ inputs.tag }}
+  group: build-open-relay
 
 jobs:
   build:
