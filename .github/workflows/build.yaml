@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     name: Build unsigned IPA
-    runs-on: macos-26-intel
+    runs-on: macos-latest
     permissions:
       contents: write
 
@@ -110,7 +110,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend -debug-time-expression-type-checking -Xfrontend -solver-expression-time-threshold=100000 -Xfrontend -solver-memory-threshold=4294967295 -Xfrontend -solver-scope-threshold=4294967295 -Xfrontend -solver-trail-threshold=4294967295'
+            OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend -debug-constraints-on-line=16 -Xfrontend -solver-expression-time-threshold=100000 -Xfrontend -solver-memory-threshold=4294967295 -Xfrontend -solver-scope-threshold=4294967295 -Xfrontend -solver-trail-threshold=4294967295'
 
       - name: Package into IPA
         if: steps.already.outputs.released != 'true'
