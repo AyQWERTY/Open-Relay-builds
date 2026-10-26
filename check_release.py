@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print up to MAX_BUILDS newest upstream Open Relay tags that this repo has no release for.
+"""Print the newest upstream Open Relay tags newer than our latest release.
 
 Run:
     BUILD_REPO=AyQWERTY/Open-Relay-builds GITHUB_TOKEN=... python check_release.py
@@ -35,24 +35,27 @@ def version(tag):
     return tuple(int(p) for p in tag.lstrip("v").split("."))
 
 
+def pending(tags, released):
+    # anything at or below our newest release is already covered; older upstream
+    # tags are not worth building
+    newest = max(map(version, released), default=())
+    # oldest first: GitHub's "latest" release is the most recently created one,
+    # so the newest version must be built last
+    return sorted((t for t in tags if version(t) > newest), key=version)[-MAX_BUILDS:]
+
+
 def main():
     tags = [tag["name"] for tag in api(f"/repos/{UPSTREAM}/tags?per_page=100")]
     released = {
         r["tag_name"] for r in api(f"/repos/{BUILD_REPO}/releases?per_page=100")
     }
-
-    # take the MAX_BUILDS newest tags, print them oldest first: GitHub's "latest"
-    # release is the most recently created one, so the newest version must be built last
-    pending = sorted((t for t in tags if t not in released), key=version, reverse=True)
-    for tag in sorted(pending[:MAX_BUILDS], key=version):
+    for tag in pending(tags, released):
         print(tag)
 
 
 if __name__ == "__main__":
-    assert sorted(["v6.4", "v6.4.1", "v6.10", "v3.4.2.1"], key=version) == [
-        "v3.4.2.1",
-        "v6.4",
-        "v6.4.1",
-        "v6.10",
-    ]
+    tags = ["v6.4.1", "v6.4", "v6.3.4", "v6.10", "v6.9"]
+    assert pending(tags, {"v6.10"}) == []
+    assert pending(tags, {"v6.4.1"}) == ["v6.9", "v6.10"]
+    assert pending(tags, set()) == ["v6.3.4", "v6.4", "v6.4.1", "v6.9", "v6.10"]
     main()
